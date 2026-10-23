@@ -1,0 +1,211 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Padrão de fábrica",
+  "description": "Camada 1 da parametrização: o padrão construtivo global da fábrica. Linha, categoria, módulo e instância só SOBRESCREVEM partes dele (JSON Merge Patch, RFC 7386). Tudo que pode ser sobrescrito é objeto indexado por id (não lista), para que o merge funcione item a item.",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "$ref": "comum.schema.json#/$defs/id" },
+    "nome": { "type": "string" },
+    "versao": { "$ref": "comum.schema.json#/$defs/versao" },
+    "unidade": { "const": "mm" },
+
+    "arredondamento": {
+      "type": "object",
+      "description": "Arredondamento das medidas de corte na saída de produção.",
+      "properties": {
+        "corte": { "type": "number", "exclusiveMinimum": 0, "description": "Passo em mm (0.1, 0.5, 1)." },
+        "modo": { "enum": ["proximo", "baixo", "cima"] }
+      },
+      "required": ["corte", "modo"],
+      "additionalProperties": false
+    },
+
+    "chapaPadrao": {
+      "type": "object",
+      "description": "Chapa bruta de referência (plano de corte e consumo).",
+      "properties": {
+        "comprimento": { "$ref": "comum.schema.json#/$defs/medida" },
+        "largura": { "$ref": "comum.schema.json#/$defs/medida" },
+        "refilo": { "$ref": "comum.schema.json#/$defs/medida" },
+        "serra": { "$ref": "comum.schema.json#/$defs/medida" }
+      },
+      "additionalProperties": false
+    },
+
+    "materiais": {
+      "type": "object",
+      "description": "Catálogo de chapas. A ESPESSURA de cada peça vem daqui, via acabamento: trocar o material de um acabamento recalcula o módulo inteiro.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tipo": { "enum": ["chapa"] },
+          "descricao": { "type": "string" },
+          "espessura": { "$ref": "comum.schema.json#/$defs/medida" },
+          "veio": { "type": "boolean", "description": "true = padrão com direção (madeirado); o comprimento da peça segue o veio." },
+          "fita": { "$ref": "comum.schema.json#/$defs/id", "description": "Fita padrão para este material." },
+          "cor": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" },
+          "textura": { "type": "string", "description": "Caminho da textura para o render." },
+          "codigoErp": { "type": "string" }
+        },
+        "required": ["tipo", "descricao", "espessura"],
+        "additionalProperties": false
+      }
+    },
+
+    "fitas": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "descricao": { "type": "string" },
+          "espessura": { "$ref": "comum.schema.json#/$defs/medida" },
+          "largura": { "$ref": "comum.schema.json#/$defs/medida" },
+          "codigoErp": { "type": "string" }
+        },
+        "required": ["descricao", "espessura"],
+        "additionalProperties": false
+      }
+    },
+
+    "regrasFita": {
+      "type": "object",
+      "properties": {
+        "descontarNoCorte": { "type": "boolean", "description": "Medida de corte = medida final menos a espessura da fita em cada borda fitada." },
+        "descontarAPartirDe": { "$ref": "comum.schema.json#/$defs/medida", "description": "Só desconta fitas com espessura >= este valor (ex.: 1.0 ignora fita 0,45)." }
+      },
+      "required": ["descontarNoCorte"],
+      "additionalProperties": false
+    },
+
+    "acabamentos": {
+      "type": "object",
+      "description": "Slot de acabamento -> material. Ex.: estrutura, frente, costa, caixaGaveta, fundoGaveta. Expressões leem a espessura como esp.<slot>.",
+      "additionalProperties": { "$ref": "comum.schema.json#/$defs/id" }
+    },
+
+    "papeis": {
+      "type": "object",
+      "description": "Papel de peça -> comportamento padrão (acabamento, fitas, rótulo). É a ponte entre o parametrizador (atribuir papel) e a produção.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "rotulo": { "type": "string" },
+          "acabamento": { "type": "string" },
+          "fitas": { "$ref": "comum.schema.json#/$defs/listaFaces" },
+          "grupoLista": { "type": "string", "description": "Agrupamento na lista de corte (caixa, frentes, gavetas...)." }
+        },
+        "required": ["rotulo", "acabamento"],
+        "additionalProperties": false
+      }
+    },
+
+    "folgas": {
+      "type": "object",
+      "description": "Folgas em mm, por grupo. Grupos e chaves extras são permitidos; cada regra declara no manifesto (campo 'le') o que precisa, e o motor recusa carregar se faltar.",
+      "properties": {
+        "frentes": {
+          "type": "object",
+          "properties": {
+            "entreFrentes": { "$ref": "comum.schema.json#/$defs/medida" },
+            "perimetro": { "$ref": "comum.schema.json#/$defs/medida", "description": "Folga entre frente sobreposta e o contorno externo do módulo." },
+            "embutidaPerimetro": { "$ref": "comum.schema.json#/$defs/medida" }
+          },
+          "additionalProperties": { "type": "number" }
+        },
+        "gavetas": { "type": "object", "additionalProperties": { "type": "number" } },
+        "prateleiras": { "type": "object", "additionalProperties": { "type": "number" } }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "number" }
+      }
+    },
+
+    "construcao": {
+      "type": "object",
+      "description": "Sistema construtivo da caixa.",
+      "properties": {
+        "costa": {
+          "type": "object",
+          "properties": {
+            "tipo": { "enum": ["canal", "sobreposta"] },
+            "canalRecuo": { "$ref": "comum.schema.json#/$defs/medida", "description": "Distância do fundo do módulo até o canal." },
+            "canalProfundidade": { "$ref": "comum.schema.json#/$defs/medida" },
+            "canalFolga": { "$ref": "comum.schema.json#/$defs/medida", "description": "Folga no fundo do canal (a costa entra canalProfundidade - canalFolga)." }
+          },
+          "required": ["tipo"],
+          "additionalProperties": false
+        },
+        "rodape": {
+          "type": "object",
+          "properties": {
+            "tipo": { "enum": ["rodape", "pes", "nenhum"] },
+            "altura": { "$ref": "comum.schema.json#/$defs/medida" },
+            "recuo": { "$ref": "comum.schema.json#/$defs/medida" }
+          },
+          "required": ["tipo"],
+          "additionalProperties": false
+        },
+        "frentes": {
+          "type": "object",
+          "properties": {
+            "sobreposicaoExterna": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fração da espessura de uma peça EXTERNA (lateral, base, tampo) coberta pela frente sobreposta. 1 = sobreposição total." },
+            "sobreposicaoInterna": { "type": "number", "minimum": 0, "maximum": 1, "description": "Fração da espessura de um SEPARADOR interno coberta por cada frente vizinha. 0.5 = metade para cada lado." }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
+    },
+
+    "furacao": {
+      "type": "object",
+      "description": "Padrões de furação. Grupos extras permitidos.",
+      "properties": {
+        "sistema32": { "type": "object", "additionalProperties": { "type": "number" } },
+        "minifix": { "type": "object", "additionalProperties": { "type": "number" } },
+        "cavilha": { "type": "object", "additionalProperties": { "type": "number" } },
+        "dobradica": { "type": "object", "additionalProperties": { "type": "number" } },
+        "juncoes": {
+          "type": "object",
+          "description": "Par de papéis 'papelA+papelB' -> sistema de união aplicado pela regra furacao.juncoes.",
+          "propertyNames": { "pattern": "^[a-z_]+\\+[a-z_]+$" },
+          "additionalProperties": { "enum": ["minifix_cavilha", "minifix", "cavilha", "confirmat", "nenhuma"] }
+        }
+      },
+      "additionalProperties": { "type": "object" }
+    },
+
+    "ferragens": {
+      "type": "object",
+      "description": "Catálogo de ferragens. Propriedades técnicas extras (comprimento, folgaLateral, entreFuros...) são livres e lidas pelas regras.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "categoria": { "enum": ["corredica", "dobradica", "minifix", "cavilha", "confirmat", "suporte_prateleira", "puxador", "pe", "fixacao", "outro"] },
+          "descricao": { "type": "string" },
+          "unidade": { "enum": ["PC", "PAR", "JG", "M"] },
+          "modelo3d": { "type": "string", "description": "glb em catalogo/modelos3d." },
+          "codigoErp": { "type": "string" }
+        },
+        "required": ["categoria", "descricao", "unidade"],
+        "additionalProperties": { "type": ["number", "string", "boolean"] }
+      }
+    },
+
+    "tabelas": {
+      "type": "object",
+      "description": "Tabelas consultadas por expressões via tab(nome, chave). É aqui que mora a 'inteligência por faixa' editável sem programador.",
+      "additionalProperties": { "$ref": "comum.schema.json#/$defs/tabelaFaixas" }
+    },
+
+    "limites": {
+      "type": "object",
+      "description": "Limites usados em restrições de módulo (porta máxima, gaveta mínima...).",
+      "additionalProperties": { "type": "number" }
+    }
+  },
+  "required": ["id", "nome", "versao", "unidade", "arredondamento", "materiais", "fitas", "regrasFita", "acabamentos", "papeis", "folgas", "construcao", "furacao", "ferragens", "tabelas", "limites"],
+  "additionalProperties": false
+}

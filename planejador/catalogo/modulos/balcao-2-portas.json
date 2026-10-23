@@ -1,0 +1,53 @@
+{
+  "$schema": "../../schemas/modulo.schema.json",
+  "id": "cz.balcao-2-portas",
+  "versao": "0.1.0",
+  "nome": "Balcão 2 portas",
+  "categoria": "cat.cozinha.balcoes",
+  "estende": "base.caixa-balcao",
+  "codigo": "BAL2P-{L}x{A}x{P}",
+  "descricao": "BALCÃO 2 PORTAS {L}x{A}x{P}",
+  "tags": ["cozinha", "balcao", "portas"],
+
+  "parametros": {
+    "L": { "padrao": 800, "min": 600 },
+    "nPrateleiras": { "rotulo": "Prateleiras", "tipo": "inteiro", "padrao": 1, "modo": "passos", "min": 0, "max": 3, "incremento": 1, "grupo": "Interno" },
+    "puxador": { "rotulo": "Puxador", "tipo": "ferragem", "categoria": "puxador", "padrao": "PUX_128_INOX", "grupo": "Acabamento" }
+  },
+
+  "restricoes": {
+    "portaLarga": {
+      "quando": "L / 2 > fab.limites.portaLarguraMax",
+      "nivel": "erro",
+      "mensagem": "Cada porta ficaria com {L / 2} mm (máx. {fab.limites.portaLarguraMax} mm). Use o balcão de 3 portas."
+    }
+  },
+
+  "pecas": {
+    "prateleira": {
+      "papel": "prateleira",
+      "eixos": "XZ",
+      "comprimento": "Li - 2 * fab.folgas.prateleiras.lateral",
+      "largura": "P - zInterno - fab.folgas.prateleiras.traseira - fab.folgas.prateleiras.frontal",
+      "posicao": [
+        "e + fab.folgas.prateleiras.lateral",
+        "yBase + e + (i + 1) * (Ai - n * e) / (n + 1) + i * e",
+        "zInterno + fab.folgas.prateleiras.traseira"
+      ],
+      "repetir": { "quantidade": "nPrateleiras" },
+      "obs": "Fórmula pura, estilo Inventor: n prateleiras móveis com vãos livres iguais. Compare com prateleiras.distribuir no balcão com gaveta."
+    }
+  },
+
+  "ferragens": {
+    "suportesPrateleira": { "ferragem": "SUP_PRAT_5", "quantidade": "4 * nPrateleiras" }
+  },
+
+  "vaos": {
+    "interno": {
+      "regras": {
+        "portas": { "regra": "portas.aplicar", "args": { "quantidade": 2, "tipo": "sobreposta", "puxador": { "param": "puxador" } } }
+      }
+    }
+  }
+}

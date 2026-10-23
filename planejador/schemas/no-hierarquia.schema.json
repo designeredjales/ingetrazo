@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Linha ou Categoria",
+  "description": "Nós intermediários da hierarquia Padrão de fábrica > Linha > Categoria > Módulo > Peça. Cada nó só sobrescreve o que muda (JSON Merge Patch sobre o padrão herdado). O resultado do merge é validado contra padrao-fabrica.schema.json pelo motor.",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "$ref": "comum.schema.json#/$defs/id" },
+    "tipo": { "enum": ["linha", "categoria"] },
+    "nome": { "type": "string" },
+    "pai": {
+      "$ref": "comum.schema.json#/$defs/id",
+      "description": "Linha -> id do padrão de fábrica. Categoria -> id da linha."
+    },
+    "descricao": { "type": "string" },
+    "ordem": { "type": "integer" },
+    "imagem": { "type": "string" },
+    "sobrescrever": {
+      "type": "object",
+      "description": "Patch parcial do padrão de fábrica. null remove a chave herdada."
+    },
+    "parametrosPadrao": {
+      "type": "object",
+      "description": "Preenche o valor padrão de parâmetros que o módulo NÃO definiu (a categoria completa lacunas, não atropela o módulo). Ex.: aéreos A=700, P=350.",
+      "additionalProperties": { "type": ["number", "string", "boolean"] }
+    }
+  },
+  "required": ["id", "tipo", "nome", "pai"],
+  "additionalProperties": false
+}

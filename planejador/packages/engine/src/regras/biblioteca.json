@@ -1,0 +1,202 @@
+{
+  "$schema": "../../../../schemas/regra.schema.json",
+  "versao": "0.1.0",
+
+  "regras": {
+    "portas.aplicar": {
+      "nome": "Aplicar portas",
+      "descricao": "Cria n portas cobrindo o vão. Sobreposta: cada borda do vão é coberta conforme a peça vizinha (externa = sobreposicaoExterna x espessura; separador = sobreposicaoInterna x espessura), menos folgas.frentes. Embutida: dentro da luz, com embutidaPerimetro. Duas portas: largura = (envelope - entreFrentes) / 2. Chama ferragens.dobradicas e puxador.aplicar em cada porta.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "vao",
+      "argumentos": {
+        "quantidade": { "tipo": "inteiro", "rotulo": "Quantidade de portas", "padrao": 1, "min": 1, "max": 4 },
+        "tipo": { "tipo": "opcao", "rotulo": "Tipo de frente", "opcoes": { "sobreposta": "Sobreposta", "embutida": "Embutida" }, "padrao": "sobreposta" },
+        "abertura": { "tipo": "opcao", "rotulo": "Abertura (porta única)", "opcoes": { "esq": "Dobradiça à esquerda", "dir": "Dobradiça à direita", "cima": "Basculante" }, "padrao": "esq" },
+        "dobradica": { "tipo": "ferragem", "rotulo": "Dobradiça", "categoria": "dobradica", "padrao": "auto", "descricao": "auto: reta para sobreposta, supercurva para embutida." },
+        "puxador": { "tipo": "ferragem", "rotulo": "Puxador", "categoria": "puxador", "padrao": "nenhum" }
+      },
+      "le": [
+        "folgas.frentes.entreFrentes",
+        "folgas.frentes.perimetro",
+        "folgas.frentes.embutidaPerimetro",
+        "construcao.frentes.sobreposicaoExterna",
+        "construcao.frentes.sobreposicaoInterna",
+        "acabamentos.frente",
+        "limites.portaLarguraMax",
+        "limites.portaAlturaMax"
+      ],
+      "produz": { "pecas": ["frente_porta"], "ferragens": ["dobradica", "puxador"], "usinagens": true, "componentes3d": ["puxador"] },
+      "chama": ["ferragens.dobradicas", "puxador.aplicar"],
+      "alertas": ["Porta mais larga que limites.portaLarguraMax", "Porta mais alta que limites.portaAlturaMax"]
+    },
+
+    "gavetas.dividir": {
+      "nome": "Dividir vão em gavetas",
+      "descricao": "Divide o vão em n gavetas. Frentes: iguais, progressivas (cada uma fatorProgressao vezes a de cima) ou alturas fixas, descontando folgas.frentes. Caixa: largura = luz - 2 x folgaLateral da corrediça; profundidade = comprimento da corrediça; altura = tab('alturaCaixaGaveta', alturaFrente); fundo em rebaixo. Chama ferragens.corredicaPorProfundidade e puxador.aplicar.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "vao",
+      "argumentos": {
+        "quantidade": { "tipo": "inteiro", "rotulo": "Gavetas", "padrao": 3, "min": 1, "max": 8 },
+        "modo": { "tipo": "opcao", "rotulo": "Divisão", "opcoes": { "iguais": "Iguais", "progressiva": "Progressiva", "fixas": "Alturas fixas" }, "padrao": "iguais" },
+        "fatorProgressao": { "tipo": "numero", "rotulo": "Fator de progressão", "padrao": 1.25, "min": 1, "max": 2 },
+        "alturas": { "tipo": "lista", "itens": "medida", "rotulo": "Alturas das frentes (de baixo para cima)", "descricao": "Obrigatório no modo 'fixas'. '*' em uma posição recebe o restante." },
+        "tipoFrente": { "tipo": "opcao", "rotulo": "Tipo de frente", "opcoes": { "sobreposta": "Sobreposta", "embutida": "Embutida" }, "padrao": "sobreposta" },
+        "corredica": { "tipo": "ferragem", "rotulo": "Corrediça", "categoria": "corredica", "padrao": "auto" },
+        "puxador": { "tipo": "ferragem", "rotulo": "Puxador", "categoria": "puxador", "padrao": "nenhum" }
+      },
+      "le": [
+        "folgas.frentes.entreFrentes",
+        "folgas.frentes.perimetro",
+        "folgas.gavetas.traseira",
+        "folgas.gavetas.fundoRebaixo",
+        "construcao.frentes.sobreposicaoExterna",
+        "construcao.frentes.sobreposicaoInterna",
+        "tabelas.alturaCaixaGaveta",
+        "limites.gavetaFrenteMin",
+        "acabamentos.frente",
+        "acabamentos.caixaGaveta",
+        "acabamentos.fundoGaveta"
+      ],
+      "produz": {
+        "pecas": ["frente_gaveta", "lateral_gaveta", "contrafrente_gaveta", "traseira_gaveta", "fundo_gaveta"],
+        "ferragens": ["corredica", "puxador"],
+        "usinagens": true,
+        "componentes3d": ["puxador"]
+      },
+      "chama": ["ferragens.corredicaPorProfundidade", "puxador.aplicar"],
+      "alertas": ["Frente abaixo de limites.gavetaFrenteMin", "Nenhuma corrediça do catálogo cabe na profundidade do vão"]
+    },
+
+    "prateleiras.distribuir": {
+      "nome": "Distribuir prateleiras",
+      "descricao": "Cria n prateleiras com vãos livres iguais. Móvel: aplica folgas.prateleiras, conta 4 suportes por prateleira e chama furacao.sistema32 nas bordas laterais do vão. Fixa: ocupa a luz inteira e entra na regra de junções.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "vao",
+      "argumentos": {
+        "quantidade": { "tipo": "inteiro", "rotulo": "Prateleiras", "padrao": 1, "min": 0, "max": 10 },
+        "tipo": { "tipo": "opcao", "rotulo": "Tipo", "opcoes": { "movel": "Móvel", "fixa": "Fixa" }, "padrao": "movel" }
+      },
+      "le": ["folgas.prateleiras.lateral", "folgas.prateleiras.frontal", "folgas.prateleiras.traseira", "limites.prateleiraVaoMax"],
+      "produz": { "pecas": ["prateleira"], "ferragens": ["suporte_prateleira"], "usinagens": true },
+      "chama": ["furacao.sistema32"],
+      "alertas": ["Vão livre maior que limites.prateleiraVaoMax: risco de flecha"]
+    },
+
+    "ferragens.dobradicas": {
+      "nome": "Dobradiças por altura",
+      "descricao": "Quantidade = tab('dobradicasPorAltura', dimensão da porta no lado da dobradiça). Extremas a furacao.dobradica.distanciaExtremo das pontas, intermediárias distribuídas igualmente. Gera o furo de caneco na face interna da porta e registra a ferragem.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "peca",
+      "argumentos": {
+        "dobradica": { "tipo": "ferragem", "rotulo": "Dobradiça", "categoria": "dobradica", "padrao": "auto" },
+        "lado": { "tipo": "opcao", "rotulo": "Lado da dobradiça", "opcoes": { "esq": "Esquerda", "dir": "Direita", "cima": "Superior" }, "obrigatorio": true }
+      },
+      "le": [
+        "tabelas.dobradicasPorAltura",
+        "furacao.dobradica.diametroCaneco",
+        "furacao.dobradica.profundidadeCaneco",
+        "furacao.dobradica.distanciaBorda",
+        "furacao.dobradica.distanciaExtremo"
+      ],
+      "produz": { "ferragens": ["dobradica"], "usinagens": true }
+    },
+
+    "ferragens.corredicaPorProfundidade": {
+      "nome": "Corrediça por profundidade",
+      "descricao": "Escolhe a MAIOR corrediça do catálogo com comprimento <= profundidade do vão - folgas.gavetas.traseira. Regra-função: devolve o id da ferragem para quem chamou (comprimento e folgaLateral vêm dela).",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "vao",
+      "argumentos": {},
+      "le": ["folgas.gavetas.traseira", "ferragens"],
+      "produz": { "retorno": "id da ferragem de categoria corredica" },
+      "alertas": ["Nenhuma corrediça cabe na profundidade disponível"]
+    },
+
+    "puxador.aplicar": {
+      "nome": "Aplicar puxador",
+      "descricao": "Posiciona o puxador na frente (porta: lado oposto à dobradiça; gaveta: centralizado), gera os furos passantes pela distância entreFuros da ferragem e a instância 3D do glb.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "peca",
+      "argumentos": {
+        "puxador": { "tipo": "ferragem", "rotulo": "Puxador", "categoria": "puxador", "obrigatorio": true },
+        "posicao": { "tipo": "opcao", "rotulo": "Posição", "opcoes": { "auto": "Automática", "centro": "Centro", "superior": "Superior", "inferior": "Inferior" }, "padrao": "auto" },
+        "recuoBorda": { "tipo": "medida", "rotulo": "Distância da borda", "padrao": 50 }
+      },
+      "le": ["ferragens"],
+      "produz": { "ferragens": ["puxador"], "usinagens": true, "componentes3d": ["puxador"] }
+    },
+
+    "construcao.canalCosta": {
+      "nome": "Canal de costa",
+      "descricao": "Gera o rasgo da costa nas peças informadas: largura = espessura da costa + 1, profundidade = canalProfundidade, a canalRecuo do fundo, na face voltada para a costa. Só atua se construcao.costa.tipo == 'canal'.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v0",
+      "aplicaEm": "modulo",
+      "argumentos": {
+        "costa": { "tipo": "peca", "rotulo": "Peça costa", "obrigatorio": true },
+        "pecas": { "tipo": "lista", "itens": "peca", "rotulo": "Peças que recebem o canal", "obrigatorio": true }
+      },
+      "le": ["construcao.costa.tipo", "construcao.costa.canalRecuo", "construcao.costa.canalProfundidade"],
+      "produz": { "usinagens": true }
+    },
+
+    "furacao.juncoes": {
+      "nome": "Junções automáticas",
+      "descricao": "Detecta pares de peças em contato (topo de uma contra a face da outra) e aplica furacao.juncoes['papelA+papelB']: tambor de minifix na peça de topo e pino na face, cavilhas, confirmat. Registra as ferragens.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v1",
+      "aplicaEm": "modulo",
+      "argumentos": {},
+      "le": ["furacao.juncoes", "furacao.minifix", "furacao.cavilha"],
+      "produz": { "ferragens": ["minifix", "cavilha", "confirmat"], "usinagens": true }
+    },
+
+    "furacao.sistema32": {
+      "nome": "Linha de furos sistema 32",
+      "descricao": "Duas colunas de furos para suporte de prateleira a sistema32.recuoFrontal da frente e do fundo, passo sistema32.passo, entre 'de' e 'ate', na face indicada.",
+      "versao": "0.1.0",
+      "estado": "planejada",
+      "marco": "v1",
+      "aplicaEm": "peca",
+      "argumentos": {
+        "face": { "tipo": "faces", "rotulo": "Face", "obrigatorio": true },
+        "de": { "tipo": "medida", "rotulo": "Início" },
+        "ate": { "tipo": "medida", "rotulo": "Fim" }
+      },
+      "le": [
+        "furacao.sistema32.recuoFrontal",
+        "furacao.sistema32.passo",
+        "furacao.sistema32.diametro",
+        "furacao.sistema32.profundidade",
+        "furacao.sistema32.margem"
+      ],
+      "produz": { "usinagens": true }
+    }
+  },
+
+  "funcoes": {
+    "min": { "assinatura": "min(a, b, ...)", "descricao": "Menor valor." },
+    "max": { "assinatura": "max(a, b, ...)", "descricao": "Maior valor." },
+    "abs": { "assinatura": "abs(x)", "descricao": "Valor absoluto." },
+    "arred": { "assinatura": "arred(x, passo)", "descricao": "Arredonda para o múltiplo de passo mais próximo.", "exemplo": "arred(667.3, 0.5) = 667.5" },
+    "piso": { "assinatura": "piso(x, passo = 1)", "descricao": "Arredonda para baixo no múltiplo de passo.", "exemplo": "piso(L / 2, 50)" },
+    "teto": { "assinatura": "teto(x, passo = 1)", "descricao": "Arredonda para cima no múltiplo de passo." },
+    "limitar": { "assinatura": "limitar(x, min, max)", "descricao": "Prende x no intervalo." },
+    "se": { "assinatura": "se(condicao, entao, senao)", "descricao": "Igual ao ternário. Preguiçosa: o ramo não escolhido não é avaliado." },
+    "tab": { "assinatura": "tab(nome, chave)", "descricao": "Consulta fab.tabelas[nome]: valor da primeira linha com chave <= ate. Erro se a chave passar da última faixa.", "exemplo": "tab('dobradicasPorAltura', 1800) = 4" }
+  }
+}

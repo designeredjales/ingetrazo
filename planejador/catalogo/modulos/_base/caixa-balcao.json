@@ -1,0 +1,85 @@
+{
+  "$schema": "../../../schemas/modulo.schema.json",
+  "id": "base.caixa-balcao",
+  "versao": "0.1.0",
+  "nome": "Caixa de balcão (base abstrata)",
+  "abstrato": true,
+  "descricao": "Corpo padrão de balcão: laterais até o piso (ou sobre pés), base, tampo, costa em canal e rodapé recuado. Módulos concretos estendem esta caixa e só preenchem o vão interno — a caixa é escrita uma vez e reaproveitada por toda a categoria.",
+
+  "parametros": {
+    "L": { "rotulo": "Largura", "tipo": "medida", "eixo": "x", "padrao": 800, "modo": "passos", "min": 300, "max": 1200, "incremento": 50, "grupo": "Dimensões" },
+    "A": { "rotulo": "Altura", "tipo": "medida", "eixo": "y", "modo": "lista", "valores": [720, 800, 870], "grupo": "Dimensões" },
+    "P": { "rotulo": "Profundidade", "tipo": "medida", "eixo": "z", "modo": "livre", "min": 300, "max": 650, "grupo": "Dimensões" }
+  },
+
+  "variaveis": {
+    "e": "esp.estrutura",
+    "temRodape": "fab.construcao.rodape.tipo == 'rodape'",
+    "temPes": "fab.construcao.rodape.tipo == 'pes'",
+    "hPe": "temPes ? fab.construcao.rodape.altura : 0",
+    "hRod": "temRodape ? fab.construcao.rodape.altura : 0",
+    "yBase": "hPe + hRod",
+    "Li": "L - 2 * e",
+    "Ai": "A - yBase - 2 * e",
+    "zCosta": "fab.construcao.costa.canalRecuo",
+    "insCosta": "fab.construcao.costa.canalProfundidade - fab.construcao.costa.canalFolga",
+    "zInterno": "zCosta + esp.costa"
+  },
+
+  "restricoes": {
+    "vaoMinimo": { "quando": "Ai < 100", "nivel": "erro", "mensagem": "Vão interno de {Ai} mm: altura insuficiente para este módulo." }
+  },
+
+  "pecas": {
+    "lateral_esq": { "papel": "lateral", "eixos": "YZ", "comprimento": "A - hPe", "largura": "P", "posicao": [0, "hPe", 0] },
+    "lateral_dir": { "papel": "lateral", "eixos": "YZ", "comprimento": "A - hPe", "largura": "P", "posicao": ["L - e", "hPe", 0] },
+    "base": { "papel": "base", "eixos": "XZ", "comprimento": "Li", "largura": "P", "posicao": ["e", "yBase", 0] },
+    "tampo": { "papel": "tampo", "eixos": "XZ", "comprimento": "Li", "largura": "P", "posicao": ["e", "A - e", 0] },
+    "costa": {
+      "papel": "costa",
+      "eixos": "XY",
+      "comprimento": "Li + 2 * insCosta",
+      "largura": "Ai + 2 * insCosta",
+      "posicao": ["e - insCosta", "yBase + e - insCosta", "zCosta"],
+      "obs": "Encaixada em canal nas laterais, base e tampo (canal gerado pela regra construcao.canalCosta)."
+    },
+    "rodape": {
+      "papel": "rodape",
+      "eixos": "XY",
+      "comprimento": "Li",
+      "largura": "hRod",
+      "posicao": ["e", 0, "P - fab.construcao.rodape.recuo - e"],
+      "condicao": "temRodape"
+    }
+  },
+
+  "vaos": {
+    "interno": {
+      "caixa": { "x": "e", "y": "yBase + e", "z": "zInterno", "L": "Li", "A": "Ai", "P": "P - zInterno" },
+      "bordas": { "esq": "lateral_esq", "dir": "lateral_dir", "baixo": "base", "cima": "tampo", "tras": "costa" }
+    }
+  },
+
+  "regras": {
+    "canalCosta": { "regra": "construcao.canalCosta", "args": { "costa": "costa", "pecas": ["lateral_esq", "lateral_dir", "base", "tampo"] } },
+    "juncoes": { "regra": "furacao.juncoes" }
+  },
+
+  "ferragens": {
+    "fixacaoTampo": { "ferragem": "CANT_TAMPO", "quantidade": "L > 900 ? 3 : 2" }
+  },
+
+  "modelos3d": {
+    "pes": {
+      "fonte": { "arquivo": "modelos3d/pe-regulavel-100.glb", "no": "pe" },
+      "papel": "pe",
+      "ferragem": "PE_REG_100",
+      "condicao": "temPes",
+      "eixos": {
+        "x": { "modo": "repetir", "ancora": "centro", "quantidade": "L > 900 ? 3 : 2", "de": 60, "ate": "L - 60" },
+        "y": { "modo": "esticar", "ancora": "min", "em": 0, "tamanho": "hPe" },
+        "z": { "modo": "repetir", "ancora": "centro", "quantidade": 2, "de": 80, "ate": "P - 80" }
+      }
+    }
+  }
+}

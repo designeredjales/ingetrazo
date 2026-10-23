@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schemas/modulo.schema.json",
+  "id": "cz.balcao-gaveta-2-portas",
+  "versao": "0.1.0",
+  "nome": "Balcão 1 gaveta + 2 portas",
+  "categoria": "cat.cozinha.balcoes",
+  "estende": "base.caixa-balcao",
+  "codigo": "BAL1G2P-{L}x{A}x{P}",
+  "descricao": "BALCÃO 1 GAVETA 2 PORTAS {L}x{A}x{P}",
+  "tags": ["cozinha", "balcao", "gaveta", "portas"],
+
+  "parametros": {
+    "L": { "padrao": 800, "min": 600 },
+    "hGaveta": { "rotulo": "Altura da frente da gaveta", "tipo": "medida", "padrao": 160, "modo": "lista", "valores": [130, 160, 200], "grupo": "Interno" },
+    "nPrateleiras": { "rotulo": "Prateleiras", "tipo": "inteiro", "padrao": 1, "modo": "passos", "min": 0, "max": 2, "incremento": 1, "grupo": "Interno" },
+    "puxador": { "rotulo": "Puxador", "tipo": "ferragem", "categoria": "puxador", "padrao": "PUX_128_INOX", "grupo": "Acabamento" }
+  },
+
+  "vaos": {
+    "interno": {
+      "dividir": {
+        "eixo": "y",
+        "referencia": "frente",
+        "separador": { "papel": "travessa" },
+        "partes": [
+          {
+            "id": "portas",
+            "tamanho": "*",
+            "regras": {
+              "portas": { "regra": "portas.aplicar", "args": { "quantidade": 2, "tipo": "sobreposta", "puxador": { "param": "puxador" } } },
+              "prateleiras": { "regra": "prateleiras.distribuir", "args": { "quantidade": "nPrateleiras", "tipo": "movel" } }
+            }
+          },
+          {
+            "id": "gaveta",
+            "tamanho": "hGaveta",
+            "regras": {
+              "gaveta": {
+                "regra": "gavetas.dividir",
+                "args": { "quantidade": 1, "modo": "iguais", "tipoFrente": "sobreposta", "corredica": "auto", "puxador": { "param": "puxador" } }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}
